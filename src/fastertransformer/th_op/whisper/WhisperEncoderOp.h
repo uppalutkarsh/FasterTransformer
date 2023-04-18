@@ -159,7 +159,7 @@ public:
             whisper_encoder_weights.post_transformer_layernorm_weights.beta  = get_ptr<T>(_weights[23]);
         }
         else if (!_mwhisper && _whisper_with_bias) {
-            bart_encoder_weights.pre_transformer_layernorm_weights.beta = get_ptr<T>(_weights[22]);
+            whisper_encoder_weights.pre_transformer_layernorm_weights.beta = get_ptr<T>(_weights[22]);
         }
         else if (_mwhisper && !_whisper_with_bias) {
             whisper_encoder_weights.post_transformer_layernorm_weights.gamma = get_ptr<T>(_weights[12]);
