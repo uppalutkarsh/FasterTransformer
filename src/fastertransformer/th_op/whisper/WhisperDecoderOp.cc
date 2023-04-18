@@ -111,7 +111,7 @@ FasterTransformerWhisperDecoder::FasterTransformerWhisperDecoder(th::Tensor  sel
                                                 tensor_para_size,
                                                 pipeline_para_size,
                                                 whisper_with_bias,
-                                                mbart,
+                                                mwhisper,
                                                 ft::PositionEmbeddingType(position_embedding_type),
                                                 ft::getActivationType(activation_type),
                                                 ft::getLayerNormType(layernorm_type),
