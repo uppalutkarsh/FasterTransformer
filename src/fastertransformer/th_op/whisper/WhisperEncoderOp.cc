@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2022, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2019-2023, NVIDIA CORPORATION.  All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -221,7 +221,7 @@ th::Tensor FasterTransformerWhisperEncoder::forward(th::optional<th::Tensor> inp
     return output;
 }
 
-std::vector<th::Tensor> FasterTransformerWhisperEncoder::get_pickle_info() const
+std::vector<th::Tensor> FasterTransformerBartEncoder::get_pickle_info() const
 {
     std::vector<th::Tensor> tmp(weights);
     return tmp;
@@ -231,9 +231,9 @@ std::vector<th::Tensor> FasterTransformerWhisperEncoder::get_pickle_info() const
 
 static auto fasterTransformerWhisperEncoderTHS =
 #ifdef LEGACY_THS
-    torch::jit::class_<torch_ext::FasterTransformerWhisperEncoder>("FasterTransformerWhisperEncoder")
+    torch::jit::class_<torch_ext::FasterTransformerWhisperEncoder>("FasterTransformerBartEncoder")
 #else
-    torch::jit::class_<torch_ext::FasterTransformerWhisperEncoder>("FasterTransformer", "WhisperEncoder")
+    torch::jit::class_<torch_ext::FasterTransformerWhisperEncoder>("FasterTransformer", "BartEncoder")
 #endif
         .def(torch::jit::init<th::Tensor,
                               th::Tensor,
