@@ -30,11 +30,13 @@ add_subdirectory(multi_gpu_gpt)
 add_subdirectory(gptneox)
 add_subdirectory(t5)
 add_subdirectory(bart)
+add_subdirectory(whisper)
 add_subdirectory(bert)
 add_subdirectory(deberta)
 
 add_library(th_transformer SHARED
             $<TARGET_OBJECTS:th_bart>
+            $<TARGET_OBJECTS:th_whisper>
             $<TARGET_OBJECTS:th_bert>
             $<TARGET_OBJECTS:th_common>
             $<TARGET_OBJECTS:th_deberta>
@@ -52,6 +54,7 @@ add_library(th_transformer SHARED
 )
 target_link_libraries(th_transformer PUBLIC "${TORCH_LIBRARIES}"
                       th_bart
+                      th_whisper
                       th_bert
                       th_common
                       th_deberta
