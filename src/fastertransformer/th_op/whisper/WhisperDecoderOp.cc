@@ -140,7 +140,7 @@ FasterTransformerWhisperDecoder::FasterTransformerWhisperDecoder(th::Tensor  sel
     }
 }
 
-FasterTransformerBartDecoder::~FasterTransformerBartDecoder()
+FasterTransformerWhisperDecoder::~FasterTransformerWhisperDecoder()
 {
     delete ftdecoder;
 }
