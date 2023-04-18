@@ -25,7 +25,7 @@ namespace torch_ext {
 
 class IFBartDecoder {
 public:
-    virtual ~IFWhisperDecoder() {}
+    virtual ~IFBartDecoder() {}
     virtual void forward(size_t      batch_size,
                          size_t      step,
                          th::Tensor& from_tensor,
@@ -61,7 +61,7 @@ public:
         _head_size(head_size),
         _inter_size(inter_size),
         _whisper_with_bias(whisper_with_bias),
-        _mwhisper(whisper),
+        _mwhisper(mwhisper),
         _position_embedding_type(position_embedding_type),
         _activation_type(activation_type),
         _layernorm_type(layernorm_type),
@@ -253,12 +253,12 @@ private:
     cublasLtHandle_t                            _cublasltHandle;
     std::mutex*                                 cublas_wrapper_mutex_;
     ft::cublasAlgoMap*                          cublas_algo_map_;
-    std::vector<ft::WhisperDecoderLayerWeight<T>*> decoder_layer_weights;
+    std::vector<ft::BartDecoderLayerWeight<T>*> decoder_layer_weights;
 
     ft::NcclParam tensor_para_;
     ft::NcclParam pipeline_para_;
 
-    bool                      _bart_with_bias;
+    bool                      _whisper_with_bias;
     bool                      _mwhisper;
     ft::PositionEmbeddingType _position_embedding_type;
     ft::ActivationType        _activation_type;
@@ -266,7 +266,7 @@ private:
 };
 
 // clang-format off
-class FasterTransformerBartDecoder: public th::jit::CustomClassHolder {
+class FasterTransformerWhisperDecoder: public th::jit::CustomClassHolder {
 public:
     FasterTransformerWhisperDecoder(th::Tensor  self_layernorm_gamma,   // [0] Layer: self-attn LN weight
                                  th::Tensor  self_kernel_qkv,        // [1] Layer: self-attn QKV fused weight
