@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2022, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2019-2023, NVIDIA CORPORATION.  All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,20 +16,18 @@
 
 #include "src/fastertransformer/kernels/gen_relative_pos_bias.h"
 #include "src/fastertransformer/models/whisper/WhisperDecoder.h"
-#include "src/fastertransformer/models/whisper/WhisperDecoderLayerWeight.h"
 #include "src/fastertransformer/th_op/th_utils.h"
 #include "src/fastertransformer/utils/nccl_utils.h"
-#include <iostream>
 
 namespace ft = fastertransformer;
 namespace th = torch;
 namespace torch_ext {
 
-class IFWhisperDecoder {
+class IFBartDecoder {
 public:
     virtual ~IFWhisperDecoder() {}
-    virtual void forward(size_t batch_size,
-                         size_t step,
+    virtual void forward(size_t      batch_size,
+                         size_t      step,
                          th::Tensor& from_tensor,
                          th::Tensor& memory_tensor,
                          th::Tensor& memory_sequence_length,
@@ -40,43 +38,30 @@ public:
                          th::Tensor& memory_cache_keys_tensor,
                          th::Tensor& memory_cache_values_tensor,
                          th::Tensor& relative_attention_bias_tensor) = 0;
-    virtual void forward2(size_t batch_size,
-                          size_t step,
-                          th::Tensor& from_tensor,
-                          th::Tensor& memory_tensor,
-                          th::Tensor& memory_sequence_length,
-                          th::Tensor& sequence_length,
-                          th::Tensor& output_tensor,
-                          th::Tensor& self_cache_keys_tensor,
-                          th::Tensor& self_cache_values_tensor,
-                          th::Tensor& memory_cache_keys_tensor,
-                          th::Tensor& memory_cache_values_tensor,
-                          th::Tensor& relative_attention_bias_tensor,
-                          th::Tensor& finished) = 0;
 };
 
 template<typename T>
 class FTWhisperDecoder: public IFWhisperDecoder {
 public:
-    FTWhisperDecoder(int64_t head_num,
-                     int64_t head_size,
-                     int64_t inter_size,
-                     int64_t d_model,
-                     int64_t layer_num,
-                     int64_t mem_d_model,
-                     int64_t tensor_para_size,
-                     int64_t pipeline_para_size,
-                     bool whisper_with_bias,
-                     bool mwhisper,
-                     ft::PositionEmbeddingType position_embedding_type,
-                     ft::ActivationType activation_type,
-                     ft::LayerNormType layernorm_type,
-                     const std::vector<th::Tensor>& w):
+    FTWhisperDecoder(int64_t                        head_num,
+                  int64_t                        head_size,
+                  int64_t                        inter_size,
+                  int64_t                        d_model,
+                  int64_t                        layer_num,
+                  int64_t                        mem_d_model,
+                  int64_t                        tensor_para_size,
+                  int64_t                        pipeline_para_size,
+                  bool                           whisper_with_bias,
+                  bool                           mwhisper,
+                  ft::PositionEmbeddingType      position_embedding_type,
+                  ft::ActivationType             activation_type,
+                  ft::LayerNormType              layernorm_type,
+                  const std::vector<th::Tensor>& w):
         _head_num(head_num),
         _head_size(head_size),
         _inter_size(inter_size),
         _whisper_with_bias(whisper_with_bias),
-        _mwhisper(mwhisper),
+        _mwhisper(whisper),
         _position_embedding_type(position_embedding_type),
         _activation_type(activation_type),
         _layernorm_type(layernorm_type),
@@ -95,11 +80,7 @@ public:
 
         cublas_wrapper_mutex_ = new std::mutex();
         decoder_layer_weights.clear();
-        decoder_layer_weights.reserve(_layer_num);
-        for (int l = 0; l < _layer_num; l++) {
-            decoder_layer_weights.push_back(new ft::WhisperDecoderLayerWeight<T>());
-            decoder_layer_weights[l]->setWhisperWithBias(whisper_with_bias, use_gated_activation);
-        }
+        decoder_layer_weights.resize(_layer_num);
 
         for (int i = 0; i < _layer_num; ++i) {
             int local_num_layer = (int)(ceil(_layer_num * 1.0f / pipeline_para_.world_size_));
@@ -180,8 +161,8 @@ public:
         delete cublas_wrapper_mutex_;
     }
 
-    void forward(size_t batch_size,
-                 size_t step,
+    void forward(size_t      batch_size,
+                 size_t      step,
                  th::Tensor& from_tensor,
                  th::Tensor& memory_tensor,
                  th::Tensor& memory_sequence_length,
@@ -193,7 +174,7 @@ public:
                  th::Tensor& memory_cache_values_tensor,
                  th::Tensor& relative_attention_bias_tensor) override
     {
-        auto stream = at::cuda::getCurrentCUDAStream().stream();
+        auto           stream        = at::cuda::getCurrentCUDAStream().stream();
         cublasHandle_t _cublasHandle = at::cuda::getCurrentCUDABlasHandle();
         cublasSetStream(_cublasHandle, stream);
         fastertransformer::Allocator<ft::AllocatorType::TH>* allocator =
@@ -214,153 +195,30 @@ public:
         }
 
         ft::WhisperDecoder<T> decoder = ft::WhisperDecoder<T>(batch_size,
-                                                              _head_num,
-                                                              _head_size,
-                                                              _inter_size,
-                                                              _d_model,
-                                                              _layer_num,
-                                                              _layernorm_eps,
-                                                              stream,
-                                                              cublas_wrapper,
-                                                              allocator,
-                                                              true,
-                                                              tensor_para_,
-                                                              pipeline_para_,
-                                                              _activation_type,
-                                                              _layernorm_type);
+                                                        _head_num,
+                                                        _head_size,
+                                                        _inter_size,
+                                                        _d_model,
+                                                        _layer_num,
+                                                        _layernorm_eps,
+                                                        stream,
+                                                        cublas_wrapper,
+                                                        allocator,
+                                                        true,
+                                                        tensor_para_,
+                                                        pipeline_para_,
+                                                        _activation_type,
+                                                        _layernorm_type);
 
-        int tmp_step = step + 1;
-        int beam_width = 1;
-        int max_seq_len = step;
-        uint ite = 0;  // ite is supposed to be batch_size/local_bs which for our simplified case is 1
-        std::vector<ft::Tensor> input_tensors = std::vector<ft::Tensor>{
-            convert_tensor<T>(from_tensor),
-            convert_tensor<T>(memory_tensor),
-            convert_tensor<int>(memory_sequence_length),
-            ft::Tensor{ft::MEMORY_GPU, ft::TYPE_BOOL, {batch_size}, nullptr},
-            ft::Tensor{ft::MEMORY_CPU, ft::TYPE_INT32, {1}, &tmp_step},
-            convert_tensor<int>(sequence_length),
-            ft::Tensor{ft::MEMORY_GPU,
-                       ft::getTensorType<T>(),
-                       {1, _head_num, max_seq_len + 1, max_seq_len + 1},
-                       nullptr},  // should be conditional on position_embedding_type, but simplified here
-            ft::Tensor{ft::MEMORY_CPU, ft::TYPE_UINT32, {1}, &ite},  // iteration (batch chunk in parallelism
-            ft::Tensor{ft::MEMORY_GPU,
-                       ft::TYPE_INT32,
-                       {batch_size, beam_width, max_seq_len + 1},
-                       nullptr}};  // cache indirection
-
-        std::vector<ft::Tensor> output_tensors = std::vector<ft::Tensor>{convert_tensor<T>(output_tensor),
-                                                                         convert_tensor<T>(self_cache_keys_tensor),
-                                                                         convert_tensor<T>(self_cache_values_tensor),
-                                                                         convert_tensor<T>(memory_cache_keys_tensor),
-                                                                         convert_tensor<T>(memory_cache_values_tensor)};
-
-        try {
-            decoder.forward(&output_tensors, &input_tensors, &decoder_layer_weights);
-        }
-        catch (std::runtime_error& error) {
-            std::cout << error.what();
-            exit(-1);
-        }
-        catch (...) {
-            std::cout << "Runtime error";
-            exit(-1);
-        }
-        delete cublas_wrapper;
-        delete allocator;
-    }
-
-    void forward2(size_t batch_size,
-                  size_t step,
-                  th::Tensor& from_tensor,
-                  th::Tensor& memory_tensor,
-                  th::Tensor& memory_sequence_length,
-                  th::Tensor& sequence_length,
-                  th::Tensor& output_tensor,
-                  th::Tensor& self_cache_keys_tensor,
-                  th::Tensor& self_cache_values_tensor,
-                  th::Tensor& memory_cache_keys_tensor,
-                  th::Tensor& memory_cache_values_tensor,
-                  th::Tensor& relative_attention_bias_tensor,
-                  th::Tensor& finished) override
-    {
-        auto stream = at::cuda::getCurrentCUDAStream().stream();
-        cublasHandle_t _cublasHandle = at::cuda::getCurrentCUDABlasHandle();
-        cublasSetStream(_cublasHandle, stream);
-        fastertransformer::Allocator<ft::AllocatorType::TH>* allocator =
-            new fastertransformer::Allocator<ft::AllocatorType::TH>();
-        ft::cublasMMWrapper* cublas_wrapper = new ft::cublasMMWrapper(
-            _cublasHandle, _cublasltHandle, stream, cublas_algo_map_, cublas_wrapper_mutex_, allocator);
-
-        if (std::is_same<T, half>::value) {
-            cublas_wrapper->setFP16GemmConfig();
-        }
-#ifdef ENABLE_BF16
-        else if (std::is_same<T, __nv_bfloat16>::value) {
-            cublas_wrapper->setBF16GemmConfig();
-        }
-#endif
-        else if (std::is_same<T, float>::value) {
-            cublas_wrapper->setFP32GemmConfig();
-        }
-
-        ft::WhisperDecoder<T> decoder = ft::WhisperDecoder<T>(batch_size,
-                                                              _head_num,
-                                                              _head_size,
-                                                              _inter_size,
-                                                              _d_model,
-                                                              _layer_num,
-                                                              _layernorm_eps,
-                                                              stream,
-                                                              cublas_wrapper,
-                                                              allocator,
-                                                              true,
-                                                              tensor_para_,
-                                                              pipeline_para_,
-                                                              _activation_type,
-                                                              _layernorm_type);
-
-        // input tensors:
-        //      decoder_input [local_batch_size, d_model_],
-        //      encoder_output [local_batch_size, mem_max_seq_len, mem_d_model_],
-        //      encoder_sequence_length [local_batch_size],
-        //      finished [local_batch_size],
-        //      step [1] on cpu
-        //      sequence_lengths [local_batch_size]
-        //      relative_attention_bias [1, head_num, step, step] or [1, head_num, max_seq_len, max_seq_len]
-        //      ite [1] on cpu
-        //      cache_indirection [local_batch_size / beam_width, beam_width, max_seq_len]
-        //              Here, local_batch_size contains the beam_width, so local_batch_size / beam_width
-        //              is real local_batch_size.
-        int tmp_step = step + 1;
-        int beam_width = 1;
-        int max_seq_len = step;
-        uint ite = 0;  // ite is supposed to be batch_size/local_bs which for our simplified case is 1
-        std::vector<ft::Tensor> input_tensors = std::vector<ft::Tensor>{
-            convert_tensor<T>(from_tensor),
-            convert_tensor<T>(memory_tensor),
-            convert_tensor<int>(memory_sequence_length),
-            convert_tensor<bool>(finished),
-            ft::Tensor{ft::MEMORY_CPU, ft::TYPE_INT32, {1}, &tmp_step},
-            convert_tensor<int>(sequence_length),
-            ft::Tensor{
-                ft::MEMORY_GPU, ft::getTensorType<T>(), {1, _head_num, max_seq_len + 1, max_seq_len + 1}, nullptr},
-            ft::Tensor{ft::MEMORY_CPU, ft::TYPE_UINT32, {1}, &ite},  // iteration (batch chunk in parallelism
-            ft::Tensor{ft::MEMORY_GPU,
-                       ft::TYPE_INT32,
-                       {batch_size, beam_width, max_seq_len + 1},
-                       nullptr}};  // cache indirection
-
-        // output tensors:
-        //      decoder_output [local_batch_size, d_model_],
-        //      key_cache [num_layer / pipeline_para_.world_size_, batch, head_num, size_per_head // x, max_seq_len, x]
-        //      value_cache [num_layer / pipeline_para_.world_size_, batch, head_num, max_seq_len, size_per_head]
-        //      key_mem_cache [num_layer / pipeline_para_.world_size_, batch_size, mem_max_seq_len, hidden_dimension],
-        //      value_mem_cache [num_layer / pipeline_para_.world_size_, batch_size, mem_max_seq_len, hidden_dimension]
-        //      attention_output: shape = [num_layer / pipeline_para_.world_size_, batch_size, beam,
-        //          head_num / tensor_para_.world_size_, max_seq_len, mem_max_seq_len]
-        //          offset = [batch_offset, layer_offset_base] optional, float*
+        int                     tmp_step = step + 1;
+        std::vector<ft::Tensor> input_tensors =
+            std::vector<ft::Tensor>{convert_tensor<T>(from_tensor),
+                                    convert_tensor<T>(memory_tensor),
+                                    convert_tensor<int>(memory_sequence_length),
+                                    ft::Tensor{ft::MEMORY_GPU, ft::TYPE_BOOL, {batch_size}, nullptr},
+                                    ft::Tensor{ft::MEMORY_CPU, ft::TYPE_INT32, {1}, &tmp_step},
+                                    convert_tensor<int>(sequence_length),
+                                    convert_tensor<T>(relative_attention_bias_tensor)};
 
         std::vector<ft::Tensor> output_tensors = std::vector<ft::Tensor>{convert_tensor<T>(output_tensor),
                                                                          convert_tensor<T>(self_cache_keys_tensor),
@@ -384,31 +242,31 @@ public:
     }
 
 private:
-    const int64_t _head_num;
-    const int64_t _head_size;
-    const int64_t _inter_size;
-    const int64_t _d_model;
-    std::vector<th::Tensor> _weights;
-    const int64_t _layer_num;
-    static constexpr float _layernorm_eps = 1e-6f;
-    const int64_t _mem_d_model;
-    cublasLtHandle_t _cublasltHandle;
-    std::mutex* cublas_wrapper_mutex_;
-    ft::cublasAlgoMap* cublas_algo_map_;
+    const int64_t                               _head_num;
+    const int64_t                               _head_size;
+    const int64_t                               _inter_size;
+    const int64_t                               _d_model;
+    std::vector<th::Tensor>                     _weights;
+    const int64_t                               _layer_num;
+    static constexpr float                      _layernorm_eps = 1e-6f;
+    const int64_t                               _mem_d_model;
+    cublasLtHandle_t                            _cublasltHandle;
+    std::mutex*                                 cublas_wrapper_mutex_;
+    ft::cublasAlgoMap*                          cublas_algo_map_;
     std::vector<ft::WhisperDecoderLayerWeight<T>*> decoder_layer_weights;
 
     ft::NcclParam tensor_para_;
     ft::NcclParam pipeline_para_;
 
-    bool _whisper_with_bias;
-    bool _mwhisper;
+    bool                      _bart_with_bias;
+    bool                      _mwhisper;
     ft::PositionEmbeddingType _position_embedding_type;
-    ft::ActivationType _activation_type;
-    ft::LayerNormType _layernorm_type;
+    ft::ActivationType        _activation_type;
+    ft::LayerNormType         _layernorm_type;
 };
 
 // clang-format off
-class FasterTransformerWhisperDecoder: public th::jit::CustomClassHolder {
+class FasterTransformerBartDecoder: public th::jit::CustomClassHolder {
 public:
     FasterTransformerWhisperDecoder(th::Tensor  self_layernorm_gamma,   // [0] Layer: self-attn LN weight
                                  th::Tensor  self_kernel_qkv,        // [1] Layer: self-attn QKV fused weight
@@ -462,18 +320,6 @@ public:
                                     th::Tensor memory_cache_keys_tensor,
                                     th::Tensor memory_cache_values_tensor,
                                     th::Tensor relative_attention_bias_tensor);
-                                    
-    std::vector<th::Tensor> forward2(int64_t    step,
-                                    th::Tensor from_tensor,
-                                    th::Tensor memory_tensor,
-                                    th::Tensor memory_sequence_length,
-                                    th::Tensor sequence_length,
-                                    th::Tensor self_cache_keys_tensor,
-                                    th::Tensor self_cache_values_tensor,
-                                    th::Tensor memory_cache_keys_tensor,
-                                    th::Tensor memory_cache_values_tensor,
-                                    th::Tensor relative_attention_bias_tensor,
-                                    th::Tensor finished);
 
 private:
     const at::ScalarType    _st;
