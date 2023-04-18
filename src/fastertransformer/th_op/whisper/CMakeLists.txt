@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# add_library(th_whisper SHARED WhisperEncoderOp.cc WhisperDecoderOp.cc WhisperDecodingOp.cc)
+# target_link_libraries(th_whisper PRIVATE "${TORCH_LIBRARIES}" WhisperEncoder WhisperDecoder WhisperDecoding th_utils nccl_utils)
 
-add_library(th_whisper SHARED WhisperEncoderOp.cc WhisperDecoderOp.cc WhisperDecodingOp.cc)
+add_library(th_whisper STATIC WhisperEncoderOp.cc WhisperDecoderOp.cc WhisperDecodingOp.cc)
+set_property(TARGET th_whisper PROPERTY POSITION_INDEPENDENT_CODE  ON)
 target_link_libraries(th_whisper PRIVATE "${TORCH_LIBRARIES}" WhisperEncoder WhisperDecoder WhisperDecoding th_utils nccl_utils)
