@@ -221,7 +221,7 @@ th::Tensor FasterTransformerWhisperEncoder::forward(th::optional<th::Tensor> inp
     return output;
 }
 
-std::vector<th::Tensor> FasterTransformerBartEncoder::get_pickle_info() const
+std::vector<th::Tensor> FasterTransformerWhisperEncoder::get_pickle_info() const
 {
     std::vector<th::Tensor> tmp(weights);
     return tmp;
@@ -231,9 +231,9 @@ std::vector<th::Tensor> FasterTransformerBartEncoder::get_pickle_info() const
 
 static auto fasterTransformerWhisperEncoderTHS =
 #ifdef LEGACY_THS
-    torch::jit::class_<torch_ext::FasterTransformerWhisperEncoder>("FasterTransformerBartEncoder")
+    torch::jit::class_<torch_ext::FasterTransformerWhisperEncoder>("FasterTransformerWhisperEncoder")
 #else
-    torch::jit::class_<torch_ext::FasterTransformerWhisperEncoder>("FasterTransformer", "BartEncoder")
+    torch::jit::class_<torch_ext::FasterTransformerWhisperEncoder>("FasterTransformer", "WhisperEncoder")
 #endif
         .def(torch::jit::init<th::Tensor,
                               th::Tensor,
