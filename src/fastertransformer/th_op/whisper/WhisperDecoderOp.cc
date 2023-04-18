@@ -67,8 +67,8 @@ FasterTransformerWhisperDecoder::FasterTransformerWhisperDecoder(th::Tensor  sel
                                                            int64_t     mem_d_model,
                                                            int64_t     tensor_para_size,
                                                            int64_t     pipeline_para_size,
-                                                           bool        bart_with_bias,
-                                                           bool        mbart,
+                                                           bool        whisper_with_bias,
+                                                           bool        mwhisper,
                                                            int64_t     position_embedding_type,
                                                            std::string activation_type,
                                                            std::string layernorm_type):
@@ -95,7 +95,7 @@ FasterTransformerWhisperDecoder::FasterTransformerWhisperDecoder(th::Tensor  sel
                                                  tensor_para_size,
                                                  pipeline_para_size,
                                                  whisper_with_bias,
-                                                 mbart,
+                                                 mwhisper,
                                                  ft::PositionEmbeddingType(position_embedding_type),
                                                  ft::getActivationType(activation_type),
                                                  ft::getLayerNormType(layernorm_type),
@@ -145,7 +145,7 @@ FasterTransformerBartDecoder::~FasterTransformerBartDecoder()
     delete ftdecoder;
 }
 
-std::vector<th::Tensor> FasterTransformerBartDecoder::forward(int64_t    step,
+std::vector<th::Tensor> FasterTransformerWhisperDecoder::forward(int64_t    step,
                                                               th::Tensor from_tensor,
                                                               th::Tensor memory_tensor,
                                                               th::Tensor memory_sequence_length,
