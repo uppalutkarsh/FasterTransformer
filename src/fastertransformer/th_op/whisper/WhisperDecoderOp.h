@@ -23,9 +23,9 @@ namespace ft = fastertransformer;
 namespace th = torch;
 namespace torch_ext {
 
-class IFBartDecoder {
+class IFWhisperDecoder {
 public:
-    virtual ~IFBartDecoder() {}
+    virtual ~IFWhisperDecoder() {}
     virtual void forward(size_t      batch_size,
                          size_t      step,
                          th::Tensor& from_tensor,
@@ -253,7 +253,7 @@ private:
     cublasLtHandle_t                            _cublasltHandle;
     std::mutex*                                 cublas_wrapper_mutex_;
     ft::cublasAlgoMap*                          cublas_algo_map_;
-    std::vector<ft::BartDecoderLayerWeight<T>*> decoder_layer_weights;
+    std::vector<ft::WhisperDecoderLayerWeight<T>*> decoder_layer_weights;
 
     ft::NcclParam tensor_para_;
     ft::NcclParam pipeline_para_;
