@@ -503,7 +503,7 @@ void WhisperDecoding<T>::forward(TensorMap* output_tensors,
                 sync_check_cuda_error();
             }
 
-            // BART/mBART has a layernorm after word + positional embedding
+            // Whisper/mWhisper has a layernorm after word + positional embedding
             // invokeGeneralT5LayerNorm(decoder_input_buf_ + d_model_offset,
             //                          decoder_input_buf_ + d_model_offset,
             //                          decoding_weights->pre_decoder_layernorm.gamma,
