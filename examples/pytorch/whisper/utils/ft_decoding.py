@@ -327,12 +327,18 @@ class FTWhisper(nn.Module):
     def forward(self, input_ids, attention_mask, inputs_embeds, beam_size, max_seq_len,
                 top_k, top_p, beam_search_diversity_rate,
                 temperature=1.0, len_penalty=0.0, repetition_penalty=1.0, random_seed=0,
-                is_return_output_log_probs=False, is_return_cum_log_probs=False, is_return_cross_attentions=False):
+                is_return_output_log_probs=False, is_return_cum_log_probs=False, is_return_cross_attentions=False, encoder_outputs=None):
         
-        input_ids = input_ids.to("cuda").type(torch.int32)
-        mem_seq_len = torch.sum(attention_mask, dim=1).type(torch.int32).to("cuda")
-
-        ft_encoder_outputs = self.encoder.forward(input_ids, mem_seq_len, inputs_embeds)
+        if encoder_outputs is None:
+            if self.encoder is None or input_ids is None or attention_mask is None:
+                raise ValueError("input_ids and attention_mask must be provided if encoder_outputs is None")
+            input_ids = input_ids.to("cuda").type(torch.int32)
+            mem_seq_len = torch.sum(attention_mask, dim=1).type(torch.int32).to("cuda")
+            ft_encoder_outputs = self.encoder.forward(input_ids, mem_seq_len, inputs_embeds)
+        else:
+#         input_ids = input_ids.to("cuda").type(torch.int32)
+            mem_seq_len = torch.sum(attention_mask, dim=1).type(torch.int32).to("cuda")
+            ft_encoder_outputs = self.encoder.forward(input_ids, mem_seq_len, inputs_embeds)
         results = self.decoding.forward(beam_size,  # optional, can be None
                                         max_seq_len,
                                         top_k,  # optional, can be None
