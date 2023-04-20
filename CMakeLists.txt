@@ -354,10 +354,6 @@ add_library(transformer-shared SHARED
   $<TARGET_OBJECTS:T5Encoder>
   $<TARGET_OBJECTS:T5TritonBackend>
   $<TARGET_OBJECTS:T5EncoderTritonBackend>
-  $<TARGET_OBJECTS:WhisperDecoder>
-  $<TARGET_OBJECTS:WhisperDecoding>
-  $<TARGET_OBJECTS:WhisperEncoder>
-  $<TARGET_OBJECTS:WhisperTritonBackend>
   $<TARGET_OBJECTS:TensorParallelDecoderCrossAttentionLayer>
   $<TARGET_OBJECTS:TensorParallelDecoderSelfAttentionLayer>
   $<TARGET_OBJECTS:TensorParallelGeluFfnLayer>
