@@ -1,4 +1,4 @@
-# Copyright (c) 2021-2022, NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2021-2023, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -70,31 +70,27 @@ class FTWhisperEncoderWeight(object):
         '''
         start_layer = self.pipeline_para_rank * self.num_layer // self.pipeline_para_size
         end_layer = (self.pipeline_para_rank + 1) * self.num_layer // self.pipeline_para_size
-#         print("check", start_layer, end_layer)
 
         np_weight_dtype = self.weight_data_type
         torch_weight_dtype = {np.float32: torch.float32, np.float16: torch.float16}[np_weight_dtype]
 
         encoder_weight_dict = {}
-        i = 0
         for name, param in model.named_parameters():
-            i+=1
-            if i > 4:                
             # HF BART/mBART model's weight names are prepended with "model.", remove for consistency
-                name = name.replace("model.", "")
-                print("name_deman", name)
-                if param.dim() == 2:
-                    param_t = param.transpose(1, 0) # PyTorch --> FT weight loading needs transpose
-                elif param.dim() == 1:
-                    param_t = param
-                #else:
-                    #assert False, f"The dimension of param {name} should be 1 or 2"
-                if name.find("encoder.layers") != -1 or name.find("encoder.layernorm_embedding") != -1 or name.find("encoder.layer_norm") != -1:
-                    encoder_weight_dict[name] = param_t
-                if name.find("encoder.embed_positions") != -1:
-                    encoder_weight_dict[name] = param # positional embedding table should NOT be transposed
+            name = name.replace("model.", "")
+            
+            if param.dim() == 2:
+                param_t = param.transpose(1, 0) # PyTorch --> FT weight loading needs transpose
+            elif param.dim() == 1:
+                param_t = param
+            else:
+                assert False, f"The dimension of param {name} should be 1 or 2"
+            if name.find("encoder.layers") != -1 or name.find("encoder.layernorm_embedding") != -1 or name.find("encoder.layer_norm") != -1:
+                encoder_weight_dict[name] = param_t
+            if name.find("encoder.embed_positions") != -1:
+                encoder_weight_dict[name] = param # positional embedding table should NOT be transposed
 
-            # [0]
+        # [0]
         t = torch.stack([encoder_weight_dict["encoder.layers.{}.self_attn_layer_norm.weight".format(i)]
                         for i in range(start_layer, end_layer)], 0).contiguous().cuda()
         self.w.append(t)
@@ -132,16 +128,14 @@ class FTWhisperEncoderWeight(object):
         t = encoder_weight_dict["encoder.embed_positions.weight"][2:, :].contiguous().cuda()
         self.w.append(t)
         # [10] input embedding table should NOT be transposed, [vocab, hidden size]. Directly obtained from raw weight is untransposed
-#         t = model.get_input_embeddings().weight.contiguous().cuda() 
+        t = model.get_input_embeddings().weight.contiguous().cuda() 
         # input word embedding may be scaled (mBART), instead of customize this in FT, it's better to modify the embedding loading part in PyT
-#         embedding_scale = np.sqrt(model.config.d_model) if model.config.scale_embedding else 1.0
-#         t = t * embedding_scale
-#         self.w.append(t)
-        # [11] LayerNorm after embedding & before transformer block, special in BART/mBART
-        # t = encoder_weight_dict["encoder.layernorm_embedding.weight"].contiguous().cuda()
-        t = torch.ones((model.config.d_model), dtype=torch_weight_dtype, device=model.device)
+        embedding_scale = np.sqrt(model.config.d_model) if model.config.scale_embedding else 1.0
+        t = t * embedding_scale
         self.w.append(t)
-#         self.w.append(t)
+        # [11] LayerNorm after embedding & before transformer block, special in BART/mBART
+        t = encoder_weight_dict["encoder.layernorm_embedding.weight"].contiguous().cuda()
+        self.w.append(t)
         # [12] LayerNorm after transformer block, special in mBART
         if self.mwhisper:
             t = encoder_weight_dict["encoder.layer_norm.weight"].contiguous().cuda()
@@ -160,16 +154,9 @@ class FTWhisperEncoderWeight(object):
             t = t.split(t.shape[-1] // self.tensor_para_size, dim=-1)[self.tensor_para_rank].contiguous()
             self.w.append(t)
             # [15]
-#             t = torch.stack([torch.empty((model.config.d_model), dtype=torch_weight_dtype, device=model.device)
-#                             for i in range(start_layer, end_layer)], 0).contiguous().cuda()
-#             t = t.split(t.shape[-1] // self.tensor_para_size, dim=-1)[self.tensor_para_rank].contiguous()
-#             self.w.append(t)
-            
-#             t = torch.stack([torch.empty((1,1), dtype=torch_weight_dtype, device=model.device)
-#                             for i in range(start_layer, end_layer)], 0).contiguous().cuda()
-#             t = t.split(t.shape[-1] // self.tensor_para_size, dim=-1)[self.tensor_para_rank].contiguous()
-            
-            self.w.append(torch.empty((1, 1), dtype=torch_weight_dtype).contiguous().cuda())
+            t = torch.stack([encoder_weight_dict["encoder.layers.{}.self_attn.k_proj.bias".format(i)]
+                            for i in range(start_layer, end_layer)], 0).contiguous().cuda()
+            t = t.split(t.shape[-1] // self.tensor_para_size, dim=-1)[self.tensor_para_rank].contiguous()
             self.w.append(t)
             # [16]
             t = torch.stack([encoder_weight_dict["encoder.layers.{}.self_attn.v_proj.bias".format(i)]
@@ -196,8 +183,7 @@ class FTWhisperEncoderWeight(object):
                             for i in range(start_layer, end_layer)], 0).contiguous().cuda()
             self.w.append(t)
             # [22]
-            # t = encoder_weight_dict["encoder.layernorm_embedding.bias"].contiguous().cuda()
-            t = torch.zeros((model.config.d_model), dtype=torch_weight_dtype, device=model.device)
+            t = encoder_weight_dict["encoder.layernorm_embedding.bias"].contiguous().cuda()
             self.w.append(t)
             # [23] LayerNorm after transformer block, special in mBART
             if self.mwhisper:
