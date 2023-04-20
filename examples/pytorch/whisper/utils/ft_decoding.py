@@ -24,8 +24,8 @@ class FTWhisperDecodingWeight(object):
             tensor_para_size,
             pipeline_para_size,
             *,
-            bart_with_bias=True,
-            mbart=False,
+            whisper_with_bias=True,
+            mwhisper=False,
             use_gated_activation=False,
             position_embedding_type=1,
             weight_data_type
@@ -275,7 +275,7 @@ class FTWhisperDecodingWeight(object):
 class FTWhisperDecoding(nn.Module):
     def __init__(self, decoding_weight_list, lib_path, head_num, head_size, inter_size,
                  mem_d_model, d_model, num_layer, start_id, end_id, vocab_size, q_scaling=1.0, num_bucket=32,
-                 max_distance=128, tensor_para_size=1, pipeline_para_size=1, bart_with_bias=True, mbart=False, position_embedding_type=1,
+                 max_distance=128, tensor_para_size=1, pipeline_para_size=1, whisper_with_bias=True, mwhisper=False, position_embedding_type=1,
                  activation_type="gelu", layernorm_type="post_layernorm"):
         super().__init__()
 
