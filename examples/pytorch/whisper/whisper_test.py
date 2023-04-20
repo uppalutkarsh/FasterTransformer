@@ -26,8 +26,8 @@ import math
 from transformers import PreTrainedTokenizerFast
 from transformers import WhisperForConditionalGeneration, WhisperProcessor
 from examples.pytorch.whisper.utils.ft_encoder import FTWhisperEncoderWeight, FTWhisperEncoder
-from examples.pytorch.whisper.utils.ft_decoder import FTWhisperDecoderWeight, FTWhisperDecoder
-from examples.pytorch.whisper.utils.ft_decoding import FTWhisperDecodingWeight, FTWhisperDecoding, FTWhisper
+# from examples.pytorch.whisper.utils.ft_decoder import FTWhisperDecoderWeight, FTWhisperDecoder
+from examples.pytorch.whisper.utils.ft_decoding import FTWhisperDecodingWeight, FTWhisperDecoding, FTBart
 from utils.dataset import LibriSpeech
 import whisper
 
@@ -107,18 +107,6 @@ use_fp16 = True
 # )
 # ft_encoder_weight.load_from_model(model.float())
 
-ft_decoder_weight = FTWhisperDecoderWeight(
-    config,
-    tensor_para_size,
-    pipeline_para_size,
-    whisper_with_bias=whisper_with_bias,
-    mwhisper=is_mwhisper,
-    use_gated_activation=use_gated_activation,
-    position_embedding_type=position_embedding_type,
-    weight_data_type=weight_data_type,
-)
-ft_decoder_weight.load_from_model(model)
-
 ft_decoding_weight = FTWhisperDecodingWeight(
     config,
     tensor_para_size,
@@ -129,12 +117,24 @@ ft_decoding_weight = FTWhisperDecodingWeight(
     position_embedding_type=position_embedding_type,
     weight_data_type=weight_data_type,
 )
-# ft_decoding_weight.load_from_model(model.float())
 ft_decoding_weight.load_from_model(model)
+
+# ft_decoding_weight = FTWhisperDecodingWeight(
+#     config,
+#     tensor_para_size,
+#     pipeline_para_size,
+#     whisper_with_bias=whisper_with_bias,
+#     mwhisper=is_mwhisper,
+#     use_gated_activation=use_gated_activation,
+#     position_embedding_type=position_embedding_type,
+#     weight_data_type=weight_data_type,
+# )
+# ft_decoding_weight.load_from_model(model.float())
+# ft_decoding_weight.load_from_model(model)
 
 if use_fp16:
     # ft_encoder_weight.to_half()
-    ft_decoder_weight.to_half()
+#     ft_decoder_weight.to_half()
     ft_decoding_weight.to_half()
 
 # %% [markdown]
@@ -149,13 +149,13 @@ if use_fp16:
 #                         position_embedding_type=position_embedding_type, 
 #                         activation_type=activation_type, layernorm_type=layernorm_type)
 # %%
-ft_decoder = FTWhisperDecoder(ft_decoder_weight.w, lib_path, config.decoder_attention_heads, decoder_head_size,
-                        config.decoder_ffn_dim, config.d_model, config.d_model, config.decoder_layers, 
-                        tensor_para_size=tensor_para_size, pipeline_para_size=pipeline_para_size, 
-                        whisper_with_bias=whisper_with_bias, mwhisper=is_mwhisper,
-                        position_embedding_type=position_embedding_type, 
-                        activation_type=activation_type, layernorm_type=layernorm_type)
-# %%
+# ft_decoder = FTWhisperDecoder(ft_decoder_weight.w, lib_path, config.decoder_attention_heads, decoder_head_size,
+#                         config.decoder_ffn_dim, config.d_model, config.d_model, config.decoder_layers, 
+#                         tensor_para_size=tensor_para_size, pipeline_para_size=pipeline_para_size, 
+#                         whisper_with_bias=whisper_with_bias, mwhisper=is_mwhisper,
+#                         position_embedding_type=position_embedding_type, 
+#                         activation_type=activation_type, layernorm_type=layernorm_type)
+# # %%
 ft_decoding = FTWhisperDecoding(ft_decoding_weight.w, lib_path,
                         config.decoder_attention_heads, decoder_head_size,
                         config.decoder_ffn_dim, config.d_model,
