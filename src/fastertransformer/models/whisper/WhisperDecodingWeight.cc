@@ -54,7 +54,7 @@ WhisperDecodingWeight<T>::WhisperDecodingWeight(const size_t                head
     position_embedding_type(pe_type)
 {
     // 2: absolute/relative positional embedding weight, word embedding weight.
-    // mBART has embedding2 + two LN, BART has embedding 2 + one LN
+    // mWhisper has embedding2 + two LN, Whisper has embedding 2 + one LN
     real_weights_num_ = 2 + (mwhisper ? 3 : 2) * (whisper_with_bias ? 2 : 1);
 
     FT_LOG_DEBUG("WhisperDecodingWeight " + std::string(__func__) + " start");
