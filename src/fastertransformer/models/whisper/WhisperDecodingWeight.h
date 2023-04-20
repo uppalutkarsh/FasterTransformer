@@ -94,7 +94,7 @@ private:
     int real_weights_num_;
 
     // 8: [0] absolute/relative positional embedding weight [1] word embedding weight [2] word embedding 2 weight [3]
-    // pre-LN weight [4] post-LN weight [5] pre-LN bias [6] post-LN bias [7] word embedding 2 bias. Assuming both mBART
+    // pre-LN weight [4] post-LN weight [5] pre-LN bias [6] post-LN bias [7] word embedding 2 bias. Assuming both mwhisper
     // and bias
     const static int weights_num_ = 8;
     T*               weights_ptr[weights_num_];
