@@ -80,6 +80,8 @@ class FTWhisperDecodingWeight(object):
         qkv_bias_tmp = ["q", "k", "v"]
         qkv_bias_len = 0
         for name, param in model.state_dict().items():
+            if name.find(".encoder.") != -1:
+                continue
             name = name.replace("model.", "")
             if param.dim() == 2:
                 param_t = param.transpose(1, 0)
