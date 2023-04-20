@@ -77,8 +77,10 @@ class FTWhisperDecodingWeight(object):
         weight_dict = {}
         qkv_weight_tmp = ["q", "k", "v"] # must respect this order
         qkv_weight_len = 0
-        qkv_bias_tmp = ["q", "k", "v"]
-        qkv_bias_len = 0
+        qkv_bias_tmp = ["q", torch.zeros((model.config.d_model), dtype=torch_weight_dtype, device=model.device), "v"]
+        qkv_bias_len = 1
+#         qkv_bias_tmp = ["q", "k", "v"]
+#         qkv_bias_len = 0
         for name, param in model.state_dict().items():
             if name.find(".encoder.") != -1:
                 continue
@@ -104,8 +106,10 @@ class FTWhisperDecodingWeight(object):
                     if qkv_bias_len == 3:
                         qkv_bias = torch.cat(qkv_bias_tmp, dim=-1)
                         weight_dict[name.partition("self_attn")[0] + "self_attn.qkv_proj.bias"] = qkv_bias
-                        qkv_bias_tmp = ["q", "k", "v"]
-                        qkv_bias_len = 0
+                        qkv_bias_tmp = ["q", torch.zeros((model.config.d_model), dtype=torch_weight_dtype, device=model.device), "v"]
+                        qkv_bias_len = 1
+#                         qkv_bias_tmp = ["q", "k", "v"]
+#                         qkv_bias_len = 0
                 else:
                     weight_dict[name] = param_t
             elif name.find("decoder.layernorm_embedding") != -1 or name.find("decoder.layer_norm") != -1 or name.find("final_logits_bias") != -1 or name.find("lm_head") != -1:
@@ -163,7 +167,8 @@ class FTWhisperDecodingWeight(object):
                         for i in range(start_layer, end_layer)], 0).contiguous().cuda()
         self.w.append(t.split(t.shape[1] // self.tensor_para_size, dim=1)[self.tensor_para_rank].contiguous()) 
         # [12] (1) positional embedding table should NOT be transposed, [max position embeddings, hidden size] (2) need to apply offset of 2 for absolute position embeddings in BART/mBART
-        t = weight_dict["decoder.embed_positions.weight"][2:, :].contiguous().cuda()
+        #t = weight_dict["decoder.embed_positions.weight"][2:, :].contiguous().cuda()
+        t = weight_dict["decoder.embed_positions.weight"].contiguous().cuda()
         self.w.append(t)
         # [13] input embedding table should NOT be transposed, [vocab, hidden size]. Directly obtained from raw weight is untransposed
         t = model.get_input_embeddings().weight.contiguous().cuda()
@@ -175,7 +180,8 @@ class FTWhisperDecodingWeight(object):
         t = model.get_output_embeddings().weight.contiguous().cuda() # same as weight_dict["lm_head.weight"].transpose(1, 0).contiguous().cuda() 
         self.w.append(t)
         # [15] LayerNorm after embedding & before transformer block, special in BART/mBART
-        t = weight_dict["decoder.layernorm_embedding.weight"].contiguous().cuda()
+        #t = weight_dict["decoder.layernorm_embedding.weight"].contiguous().cuda()
+        t = torch.empty((model.config.d_model), dtype=torch_weight_dtype, device=model.device)
         self.w.append(t)
         # [16] LayerNorm after transformer block, special in mBART
         if self.mwhisper:
@@ -208,7 +214,8 @@ class FTWhisperDecodingWeight(object):
             t = t.split(t.shape[-1] // self.tensor_para_size, dim=-1)[self.tensor_para_rank].contiguous()
             self.w.append(t)
             # [22]
-            t = torch.stack([weight_dict["decoder.layers.{}.encoder_attn.k_proj.bias".format(i)]
+#             t = torch.stack([weight_dict["decoder.layers.{}.encoder_attn.k_proj.bias".format(i)]
+            t = torch.stack([torch.zeros((model.config.d_model), dtype=torch_weight_dtype, device=model.device)
                             for i in range(start_layer, end_layer)], 0).contiguous().cuda()
             t = t.split(t.shape[-1] // self.tensor_para_size, dim=-1)[self.tensor_para_rank].contiguous()
             self.w.append(t)
@@ -234,7 +241,8 @@ class FTWhisperDecodingWeight(object):
             t = torch.empty((1, 1), dtype=torch_weight_dtype).contiguous().cuda()
             self.w.append(t)
             # [28]
-            t = torch.stack([weight_dict["decoder.layers.{}.fc2.bias".format(i)]
+#             t = torch.stack([weight_dict["decoder.layers.{}.fc2.bias".format(i)]
+            t = torch.empty((model.config.d_model), dtype=torch_weight_dtype, device=model.device)
                             for i in range(start_layer, end_layer)], 0).contiguous().cuda()
             self.w.append(t)
             # [29]
